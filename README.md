@@ -89,7 +89,7 @@ page was opened on (localhost, LAN IP or Tailscale), with no rebuild needed.
 | 15    | motion   | 15000 | 15100 | 15200        |
 | 16    | cache    | 16000 | 16100 | 16200        |
 | 17    | breen    | 17000 | 17100 | 17200        |
-| 18    | peak     | 18000 | 18100 | 18200        |
+| 18    | adhd     | 18000 | 18100 | 18200        |
 
 Skip block 6: Chrome refuses to open port 6000 (it's on its list of unsafe ports). Check what's actually taken with `docker ps --format '{{.Names}} {{.Ports}}'` before choosing a
 block, and add the new project to this table.
