@@ -1,0 +1,17 @@
+# Secrets
+.env
+
+# The live database lives in a Docker volume, never here. Only its dumps
+# (database/dumps/) are committed: clone, then `docker compose run --rm restore`.
+
+# Node
+node_modules/
+.next/
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store

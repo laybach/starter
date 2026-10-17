@@ -1,0 +1,22 @@
+# The web app (Next.js).
+#
+# Included by the root file, or run alone:  docker compose --env-file ../.env up -d --build
+name: starter-app-web
+
+services:
+  web:
+    container_name: starter-web
+    build:
+      context: .
+      args:
+        # Inlined into the client bundle at build time, so it has to be a build arg. Empty means
+        # "same host as the page, port 9100", which covers localhost, LAN and Tailscale.
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
+    restart: unless-stopped
+    ports:
+      - "9000:3000"
+    networks: [starter]
+
+networks:
+  starter:
+    name: starter-net

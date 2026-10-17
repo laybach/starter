@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Theme: one accent (--accent, an RGB triple used as `accent` in Tailwind) on white. A project
+   picks its own accent and fonts; the component classes below stay. */
+:root {
+  color-scheme: light;
+  --accent: 13 148 136;
+}
+
+html,
+body {
+  min-height: 100dvh;
+}
+
+body {
+  background-color: #ffffff;
+}
+
+/* The whole UI is built from these. One card, one label style, one control height (h-10),
+   one set of buttons: new screens should reuse them rather than restyle. */
+@layer components {
+  .card {
+    @apply rounded-xl border border-zinc-200 bg-white p-4 shadow-sm;
+  }
+  .label {
+    @apply text-[11px] font-semibold uppercase tracking-wider text-zinc-500;
+  }
+  .meta {
+    @apply text-xs text-zinc-500;
+  }
+  .num {
+    @apply font-mono tabular-nums;
+  }
+  /* 16px on phones: iOS Safari zooms into any input with smaller text when it's focused. */
+  .field {
+    @apply h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-base outline-none placeholder:text-zinc-400 focus:border-accent focus:ring-2 focus:ring-accent/20 sm:text-sm;
+  }
+  .btn {
+    @apply inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40;
+  }
+  .btn-primary {
+    @apply btn bg-accent text-white hover:bg-accent/90;
+  }
+  .btn-secondary {
+    @apply btn border border-zinc-200 bg-white text-zinc-700 hover:border-accent/40 hover:bg-accent/5;
+  }
+  .btn-danger {
+    @apply btn border border-red-200 bg-white text-red-600 hover:bg-red-50;
+  }
+}

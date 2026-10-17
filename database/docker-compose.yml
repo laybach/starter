@@ -1,0 +1,108 @@
+# Postgres, and the backup and restore that go with it.
+#
+# Included by the root file, or run alone:  docker compose --env-file ../.env up -d --wait
+#
+# Run the tools from the repository root (the project that owns `starter-db` once the stack is up):
+#
+#   docker compose run --rm backup            # dump to database/dumps/
+#   docker compose run --rm restore           # load the newest dump
+#   docker compose run --rm -e DUMP=starter-20260924-091500.dump restore
+name: starter-app-db
+
+x-connection: &connection
+  PGHOST: starter-db
+  PGPORT: 9200
+  PGUSER: ${DB_USER:-starter}
+  PGPASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+  PGDATABASE: ${DB_NAME:-starter}
+
+services:
+  db:
+    container_name: starter-db
+    # Pinned: a dump written by a newer pg_dump can't be read by an older pg_restore.
+    image: postgres:16
+    restart: unless-stopped
+    # Listens on 9200 inside the network too, so the port is the same everywhere.
+    command: ["postgres", "-p", "9200"]
+    environment:
+      POSTGRES_DB: ${DB_NAME:-starter}
+      POSTGRES_USER: ${DB_USER:-starter}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+    ports:
+      # Loopback only: a password-protected Postgres has no business answering the LAN.
+      - "127.0.0.1:9200:9200"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -p 9200 -U ${DB_USER:-starter} -d ${DB_NAME:-starter}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [starter]
+
+  # Tools: kept out of `up` by the profile. They run in the postgres image, so the host needs
+  # nothing but Docker.
+
+  backup:
+    image: postgres:16
+    profiles: [tools]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment: *connection
+    volumes:
+      - ./dumps:/dumps
+    networks: [starter]
+    # UTC timestamps sort lexicographically, so "newest" is just the last filename; no
+    # trusting mtimes, which a git clone resets.
+    entrypoint:
+      - sh
+      - -c
+      - >
+        out="/dumps/starter-$$(date -u +%Y%m%d-%H%M%S).dump" &&
+        pg_dump -Fc -f "$$out" &&
+        echo "Backed up $$PGDATABASE -> database/dumps/$${out#/dumps/}"
+
+  restore:
+    image: postgres:16
+    profiles: [tools]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      <<: *connection
+      DUMP: ${DUMP:-}
+    volumes:
+      - ./dumps:/dumps
+    networks: [starter]
+    # 1. Pick the dump: $DUMP, else the newest starter-*.dump by name.
+    # 2. Safety copy of the current database (starter.pre-restore-<ts>.dump) unless it's empty.
+    # 3. Drop and recreate rather than restore over the top, so rows added since the dump
+    #    can't survive. WITH (FORCE) cuts open connections; the API reconnects by itself.
+    #    The safety copy is named starter.pre-restore-*, outside the starter-* glob, so it is
+    #    never mistaken for the newest dump.
+    entrypoint:
+      - sh
+      - -c
+      - >
+        if [ -n "$${DUMP:-}" ]; then dump="/dumps/$$DUMP";
+        else dump=$$(ls /dumps/starter-*.dump 2>/dev/null | sort | tail -1); fi &&
+        if [ ! -f "$$dump" ]; then echo "No dump to restore. Run a backup first." >&2; exit 1; fi &&
+        tables=$$(psql -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public'") &&
+        if [ "$$tables" != "0" ]; then
+          safety="/dumps/starter.pre-restore-$$(date -u +%Y%m%d-%H%M%S).dump" &&
+          pg_dump -Fc -f "$$safety" &&
+          echo "Existing database saved to database/dumps/$${safety#/dumps/}";
+        fi &&
+        psql -d postgres -v ON_ERROR_STOP=1 -qc "DROP DATABASE IF EXISTS \"$$PGDATABASE\" WITH (FORCE)" &&
+        psql -d postgres -v ON_ERROR_STOP=1 -qc "CREATE DATABASE \"$$PGDATABASE\"" &&
+        pg_restore -d "$$PGDATABASE" --no-owner "$$dump" &&
+        echo "Restored $$PGDATABASE <- database/dumps/$${dump#/dumps/}"
+
+networks:
+  starter:
+    name: starter-net
+
+volumes:
+  pgdata:
+    name: starter-db_pgdata

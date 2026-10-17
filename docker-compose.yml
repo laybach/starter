@@ -1,0 +1,38 @@
+# Starter: the whole stack, assembled from the three component files.
+#
+#   cp .env.example .env     # then fill it in
+#   docker compose up -d --build
+#
+#   http://localhost:9000    the app
+#   http://localhost:9100    the API
+#   localhost:9200           Postgres (loopback only)
+#
+# Rebuild one piece by naming it:
+#
+#   docker compose up -d --build web
+#   docker compose up -d --build api
+#
+# Each piece also runs on its own (with the rest of the stack down):
+#
+#   cd database && docker compose --env-file ../.env up -d --wait
+#   cd backend  && docker compose --env-file ../.env up -d --build
+#   cd frontend && docker compose --env-file ../.env up -d --build
+#
+# Backup and restore, from this folder (dumps land in database/dumps/):
+#
+#   docker compose run --rm backup
+#   docker compose run --rm restore                                         # newest dump
+#   docker compose run --rm -e DUMP=starter-20260924-091500.dump restore   # a specific one
+#
+# The three find each other over `starter-net`, a network named outright in every file, so they
+# resolve the same addresses whether they came up together or one at a time. There is no
+# depends_on across files: the API retries the database itself.
+name: starter-app
+
+include:
+  - path: database/docker-compose.yml
+    env_file: .env
+  - path: backend/docker-compose.yml
+    env_file: .env
+  - path: frontend/docker-compose.yml
+    env_file: .env

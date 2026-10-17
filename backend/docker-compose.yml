@@ -1,0 +1,29 @@
+# The API (FastAPI).
+#
+# Included by the root file, or run alone:  docker compose --env-file ../.env up -d --build
+# It retries the database until it answers, so start order doesn't matter.
+name: starter-app-api
+
+services:
+  api:
+    container_name: starter-api
+    build: .
+    restart: unless-stopped
+    environment:
+      AUTH_USERNAME: ${AUTH_USERNAME:-admin}
+      AUTH_PASSWORD: ${AUTH_PASSWORD:-starter}
+      SESSION_SECRET: ${SESSION_SECRET:-starter-dev-secret-change-me}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      DB_HOST: starter-db
+      DB_PORT: 9200
+      DB_NAME: ${DB_NAME:-starter}
+      DB_USER: ${DB_USER:-starter}
+      DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:9000}
+    ports:
+      - "9100:8000"
+    networks: [starter]
+
+networks:
+  starter:
+    name: starter-net
